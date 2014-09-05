@@ -18,14 +18,20 @@
 
 #include "php_xcb.h"
 
+ZEND_BEGIN_ARG_INFO(arginfo_xcb_connect, 0)
+    ZEND_ARG_PASS_INFO(0)
+    ZEND_ARG_PASS_INFO(1)
+ZEND_END_ARG_INFO()
+
 zend_function_entry xcb_functions[] = {
-    PHP_FE(xcb_connect, NULL)
-    PHP_FE(xcb_disconnect, NULL)
-    PHP_FE(xcb_connection_has_error, NULL)
-    PHP_FE(xcb_flush, NULL)
-    PHP_FE(xcb_generate_id, NULL)
-    PHP_FE(xcb_get_setup, NULL)
-    PHP_FE(xcb_setup_roots_iterator, NULL)
+    ZEND_FE(xcb_connect, arginfo_xcb_connect)
+    ZEND_FE(xcb_disconnect, NULL)
+    ZEND_FE(xcb_connection_has_error, NULL)
+    ZEND_FE(xcb_flush, NULL)
+    ZEND_FE(xcb_generate_id, NULL)
+    ZEND_FE(xcb_get_setup, NULL)
+    ZEND_FE(xcb_setup_roots_length, NULL)
+    ZEND_FE(xcb_setup_roots_iterator, NULL)
     {NULL, NULL, NULL}
 };
 
@@ -33,8 +39,8 @@ zend_module_entry xcb_module_entry = {
     STANDARD_MODULE_HEADER,
     PHP_XCB_MODULE_NAME,
     xcb_functions,
-    PHP_MINIT(xcb),
-    PHP_MSHUTDOWN(xcb),
+    ZEND_MINIT(xcb),
+    ZEND_MSHUTDOWN(xcb),
     NULL,           // PHP_RINIT
     NULL,           // PHP_RSHUTDOWN
     NULL,           // PHP_MINFO
@@ -69,13 +75,13 @@ STRUCT_TO_OBJECT(xcb_screen_t)
     property_long(allowed_depths_len);
 }
 
-PHP_MINIT_FUNCTION(xcb)
+ZEND_MINIT_FUNCTION(xcb)
 {
     zend_register_list_destructors(xcb_setup, NULL);
     return SUCCESS;
 }
 
-PHP_MSHUTDOWN_FUNCTION(xcb)
+ZEND_MSHUTDOWN_FUNCTION(xcb)
 {
     if (c != NULL) {
         xcb_disconnect(c);
@@ -83,11 +89,12 @@ PHP_MSHUTDOWN_FUNCTION(xcb)
     return SUCCESS;
 }
 
-PHP_FUNCTION(xcb_connect)
+ZEND_FUNCTION(xcb_connect)
 {
-    char *displayname = NULL;
-    int l;
-    int *screenp = NULL;
+    const char *displayname = NULL;
+    long l;
+    zval *ref = NULL;
+    int screenp;
 
     if (c != NULL) {
         zend_error(E_NOTICE, "Already connected to the X server");
@@ -95,41 +102,77 @@ PHP_FUNCTION(xcb_connect)
     }
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-                              "|sl", &displayname, &l, &screenp) == FAILURE) {
+                              "|sz", &displayname, &l, &ref) == FAILURE) {
         return;
     }
 
-    c = xcb_connect(displayname, screenp);
+    c = xcb_connect(displayname, &screenp);
+    if (ref != NULL) {
+        ZVAL_LONG(ref, screenp);
+    }
 }
 
-PHP_FUNCTION(xcb_disconnect)
+ZEND_FUNCTION(xcb_disconnect)
 {
     xcb_disconnect(c);
     c = NULL;
 }
 
-PHP_FUNCTION(xcb_connection_has_error)
+ZEND_FUNCTION(xcb_connection_has_error)
 {
+    if (c == NULL) {
+        RETURN_BOOL(0);
+    }
+
     RETURN_LONG(xcb_connection_has_error(c));
 }
 
-PHP_FUNCTION(xcb_flush)
+ZEND_FUNCTION(xcb_flush)
 {
+    if (c == NULL) {
+        RETURN_BOOL(0);
+    }
+
     RETURN_LONG(xcb_flush(c));
 }
 
-PHP_FUNCTION(xcb_generate_id)
+ZEND_FUNCTION(xcb_generate_id)
 {
+    if (c == NULL) {
+        RETURN_BOOL(0);
+        return;
+    }
+
     RETURN_LONG(xcb_generate_id(c));
 }
 
-PHP_FUNCTION(xcb_get_setup)
+ZEND_FUNCTION(xcb_get_setup)
 {
+    if (c == NULL) {
+        RETURN_BOOL(0);
+    }
+
     const xcb_setup_t *setup = xcb_get_setup(c);
     ZEND_REGISTER_RESOURCE(return_value, (xcb_setup_t *) setup, le_xcb_setup);
 }
 
-PHP_FUNCTION(xcb_setup_roots_iterator)
+ZEND_FUNCTION(xcb_setup_roots_length)
+{
+    zval *rsrc;
+    const xcb_setup_t *setup;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+                              "r", &rsrc) == FAILURE) {
+        return;
+    }
+
+    ZEND_FETCH_RESOURCE(setup, xcb_setup_t*, &rsrc, -1, "xcb_setup_t",
+                        le_xcb_setup);
+
+    RETURN_LONG(xcb_setup_roots_length(setup));
+}
+
+ZEND_FUNCTION(xcb_setup_roots_iterator)
 {
     zval *rsrc, *data;
     const xcb_setup_t *setup;

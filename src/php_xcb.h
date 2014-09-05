@@ -30,15 +30,17 @@
 extern zend_module_entry xcb_module_entry;
 #define phpext_xcb_ptr &xcb_module_entry;
 
-PHP_MINIT_FUNCTION(xcb);
-PHP_MSHUTDOWN_FUNCTION(xcb);
+ZEND_MINIT_FUNCTION(xcb);
+ZEND_MSHUTDOWN_FUNCTION(xcb);
 
-PHP_FUNCTION(xcb_connect);
-PHP_FUNCTION(xcb_disconnect);
-PHP_FUNCTION(xcb_connection_has_error);
-PHP_FUNCTION(xcb_flush);
-PHP_FUNCTION(xcb_generate_id);
-PHP_FUNCTION(xcb_get_setup);
-PHP_FUNCTION(xcb_setup_roots_iterator);
+ZEND_FUNCTION(xcb_connect);
+ZEND_FUNCTION(xcb_disconnect);
+ZEND_FUNCTION(xcb_connection_has_error);
+ZEND_FUNCTION(xcb_flush);
+ZEND_FUNCTION(xcb_generate_id);
+ZEND_FUNCTION(xcb_get_setup);
+ZEND_FUNCTION(xcb_setup_roots_length);
+ZEND_FUNCTION(xcb_setup_roots_iterator);
+ZEND_FUNCTION(test);
 
 #endif
