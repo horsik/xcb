@@ -17,11 +17,11 @@
 #define zend_register_list_destructors(s, dtor) \
     le_##s = zend_register_list_destructors_ex(dtor, NULL, #s, module_number)
 
-#define property_long(name) add_property_long(dest, #name, src->name)
+#define property_long(name) add_property_long(dest, #name, (long) src->name)
 #define property_bool(name) add_property_bool(dest, #name, src->name)
 #define property_string(name) add_property_string(dest, #name, src->name)
 
-#define assoc_long(name) add_assoc_long(dest, #name, src->name)
+#define assoc_long(name) add_assoc_long(dest, #name, (long) src->name)
 #define assoc_bool(name) add_assoc_bool(dest, #name, src->name)
 #define assoc_string(name) add_assoc_string(dest, #name, src->name)
 
@@ -41,6 +41,6 @@ ZEND_FUNCTION(xcb_generate_id);
 ZEND_FUNCTION(xcb_get_setup);
 ZEND_FUNCTION(xcb_setup_roots_length);
 ZEND_FUNCTION(xcb_setup_roots_iterator);
-ZEND_FUNCTION(test);
+ZEND_FUNCTION(xcb_screen_next);
 
 #endif

@@ -18,9 +18,19 @@
 
 #include "php_xcb.h"
 
+zend_class_entry *xcb_iterator_ce;
+
+zend_function_entry xcb_iterator_functions[] = {
+    ZEND_FE_END
+};
+
 ZEND_BEGIN_ARG_INFO(arginfo_xcb_connect, 0)
     ZEND_ARG_PASS_INFO(0)
     ZEND_ARG_PASS_INFO(1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO(arginfo_xcb_screen_next, 1)
+    ZEND_ARG_OBJ_INFO(1, iterator, XcbIterator, 0)
 ZEND_END_ARG_INFO()
 
 zend_function_entry xcb_functions[] = {
@@ -32,7 +42,8 @@ zend_function_entry xcb_functions[] = {
     ZEND_FE(xcb_get_setup, NULL)
     ZEND_FE(xcb_setup_roots_length, NULL)
     ZEND_FE(xcb_setup_roots_iterator, NULL)
-    {NULL, NULL, NULL}
+    ZEND_FE(xcb_screen_next, arginfo_xcb_screen_next)
+    ZEND_FE_END
 };
 
 zend_module_entry xcb_module_entry = {
@@ -54,6 +65,12 @@ ZEND_GET_MODULE(xcb)
 
 xcb_connection_t *c = NULL;
 static int le_xcb_setup;
+static int le_xcb_screen_iterator;
+
+void xcb_generic_dtor(zend_rsrc_list_entry *rsrc TSRMLS_CC)
+{
+    free(rsrc->ptr);
+}
 
 STRUCT_TO_OBJECT(xcb_screen_t)
 {
@@ -77,7 +94,16 @@ STRUCT_TO_OBJECT(xcb_screen_t)
 
 ZEND_MINIT_FUNCTION(xcb)
 {
+    zend_class_entry tmp_ce;
+    INIT_CLASS_ENTRY(tmp_ce, "XcbIterator", xcb_iterator_functions);
+
+    xcb_iterator_ce = zend_register_internal_class(&tmp_ce TSRMLS_CC);
+    zend_declare_property_null(xcb_iterator_ce, "iterator", strlen("iterator"),
+                               ZEND_ACC_PRIVATE TSRMLS_CC);
+
     zend_register_list_destructors(xcb_setup, NULL);
+    zend_register_list_destructors(xcb_screen_iterator, xcb_generic_dtor);
+
     return SUCCESS;
 }
 
@@ -174,26 +200,60 @@ ZEND_FUNCTION(xcb_setup_roots_length)
 
 ZEND_FUNCTION(xcb_setup_roots_iterator)
 {
-    zval *rsrc, *data;
+    zval *setup_rsrc, *it_rsrc, *data;
     const xcb_setup_t *setup;
-    xcb_screen_iterator_t iterator;
+    xcb_screen_iterator_t *it;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-                              "r", &rsrc) == FAILURE) {
+                              "r", &setup_rsrc) == FAILURE) {
         return;
     }
 
-    ZEND_FETCH_RESOURCE(setup, xcb_setup_t*, &rsrc, -1, "xcb_setup_t",
+    ZEND_FETCH_RESOURCE(setup, xcb_setup_t*, &setup_rsrc, -1, "xcb_setup_t",
                         le_xcb_setup);
 
-    object_init(return_value);
+    ALLOC_INIT_ZVAL(it_rsrc);
+    ALLOC_INIT_ZVAL(data);
+
+    object_init_ex(return_value, xcb_iterator_ce);
+    object_init(data);
+
+    it = malloc(sizeof(xcb_screen_iterator_t));
+    *it = xcb_setup_roots_iterator(setup);
+
+    xcb_screen_t_to_object(it->data, data);
+    ZEND_REGISTER_RESOURCE(it_rsrc, it, le_xcb_screen_iterator);
+
+    zend_update_property(xcb_iterator_ce, return_value, "iterator",
+                         strlen("iterator"), it_rsrc TSRMLS_CC);
+    add_property_zval(return_value, "data", data);
+    add_property_long(return_value, "rem", it->rem);
+    add_property_long(return_value, "index", it->index);
+}
+
+ZEND_FUNCTION(xcb_screen_next)
+{
+    zval *obj, *rsrc, *data;
+    xcb_screen_iterator_t *it;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+                              "o", &obj) == FAILURE) {
+        return;
+    }
+
+    rsrc = zend_read_property(xcb_iterator_ce, obj, "iterator",
+                            strlen("iterator"), 0 TSRMLS_CC);
+
+    ZEND_FETCH_RESOURCE(it, xcb_screen_iterator_t*, &rsrc, -1,
+                        "xcb_screen_iterator_t", le_xcb_screen_iterator);
+
     ALLOC_INIT_ZVAL(data);
     object_init(data);
 
-    iterator = xcb_setup_roots_iterator(setup);
-    xcb_screen_t_to_object(iterator.data, data);
+    xcb_screen_next(it);
+    xcb_screen_t_to_object(it->data, data);
 
-    add_property_zval(return_value, "data", data);
-    add_property_long(return_value, "rem", iterator.rem);
-    add_property_long(return_value, "index", iterator.index);
+    add_property_zval(obj, "data", data);
+    add_property_long(obj, "rem", it->rem);
+    add_property_long(obj, "index", it->index);
 }
