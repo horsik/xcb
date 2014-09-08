@@ -27,6 +27,13 @@
 
 #define STRUCT_TO_OBJECT(type) void type##_to_object(type *src, zval *dest)
 
+#define EVENT_TO_OBJECT(type)                                   \
+void type##_to_object(xcb_generic_event_t *event, zval *dest)   \
+{                                                               \
+    type *src = (type*) event;                                  \
+    add_property_string(dest, "type", #type, strlen(#type));
+#define EVENT_END }
+
 extern zend_module_entry xcb_module_entry;
 #define phpext_xcb_ptr &xcb_module_entry;
 
@@ -42,5 +49,6 @@ ZEND_FUNCTION(xcb_get_setup);
 ZEND_FUNCTION(xcb_setup_roots_length);
 ZEND_FUNCTION(xcb_setup_roots_iterator);
 ZEND_FUNCTION(xcb_screen_next);
+ZEND_FUNCTION(xcb_wait_for_event);
 
 #endif

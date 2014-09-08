@@ -43,6 +43,7 @@ zend_function_entry xcb_functions[] = {
     ZEND_FE(xcb_setup_roots_length, NULL)
     ZEND_FE(xcb_setup_roots_iterator, NULL)
     ZEND_FE(xcb_screen_next, arginfo_xcb_screen_next)
+    ZEND_FE(xcb_wait_for_event, NULL)
     ZEND_FE_END
 };
 
@@ -87,9 +88,416 @@ STRUCT_TO_OBJECT(xcb_screen_t)
     property_long(max_installed_maps);
     property_long(root_visual);
     property_long(backing_stores);
-    property_long(save_unders);
+    property_bool(save_unders);
     property_long(root_depth);
     property_long(allowed_depths_len);
+}
+
+STRUCT_TO_OBJECT(xcb_generic_event_t)
+{
+    property_long(response_type);
+    property_long(sequence);
+    property_long(full_sequence);
+}
+
+EVENT_TO_OBJECT(xcb_generic_error_t)
+{
+    property_long(error_code);
+    property_long(resource_id);
+    property_long(minor_code);
+    property_long(major_code);
+    property_long(full_sequence);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_key_press_event_t)
+{
+    property_long(detail);
+    property_long(time);
+    property_long(root);
+    property_long(event);
+    property_long(child);
+    property_long(root_x);
+    property_long(root_y);
+    property_long(event_x);
+    property_long(event_y);
+    property_long(state);
+    property_bool(same_screen);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_key_release_event_t)
+{
+    property_long(detail);
+    property_long(time);
+    property_long(root);
+    property_long(event);
+    property_long(child);
+    property_long(root_x);
+    property_long(root_y);
+    property_long(event_x);
+    property_long(event_y);
+    property_long(state);
+    property_bool(same_screen);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_button_press_event_t)
+{
+    property_long(detail);
+    property_long(time);
+    property_long(root);
+    property_long(event);
+    property_long(child);
+    property_long(root_x);
+    property_long(root_y);
+    property_long(event_x);
+    property_long(event_y);
+    property_long(state);
+    property_bool(same_screen);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_button_release_event_t)
+{
+    property_long(detail);
+    property_long(time);
+    property_long(root);
+    property_long(event);
+    property_long(child);
+    property_long(root_x);
+    property_long(root_y);
+    property_long(event_x);
+    property_long(event_y);
+    property_long(state);
+    property_bool(same_screen);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_motion_notify_event_t)
+{
+    property_long(detail);
+    property_long(time);
+    property_long(root);
+    property_long(event);
+    property_long(child);
+    property_long(root_x);
+    property_long(root_y);
+    property_long(event_x);
+    property_long(event_y);
+    property_long(state);
+    property_bool(same_screen);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_enter_notify_event_t)
+{
+    property_long(detail);
+    property_long(time);
+    property_long(root);
+    property_long(event);
+    property_long(child);
+    property_long(root_x);
+    property_long(root_y);
+    property_long(event_x);
+    property_long(event_y);
+    property_long(state);
+    property_long(mode);
+    property_bool(same_screen_focus);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_leave_notify_event_t)
+{
+    property_long(detail);
+    property_long(time);
+    property_long(root);
+    property_long(event);
+    property_long(child);
+    property_long(root_x);
+    property_long(root_y);
+    property_long(event_x);
+    property_long(event_y);
+    property_long(state);
+    property_long(mode);
+    property_bool(same_screen_focus);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_focus_in_event_t)
+{
+    property_long(detail);
+    property_long(event);
+    property_long(mode);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_focus_out_event_t)
+{
+    property_long(detail);
+    property_long(event);
+    property_long(mode);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_keymap_notify_event_t)
+{
+    int i;
+    zval *keys;
+
+    ALLOC_INIT_ZVAL(keys);
+    array_init(keys);
+
+    for (i = 0; i < 31; i++) {
+        add_next_index_long(keys, src->keys[i]);
+    }
+
+    add_property_zval(dest, "keys", keys);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_expose_event_t)
+{
+    property_long(window);
+    property_long(x);
+    property_long(y);
+    property_long(width);
+    property_long(height);
+    property_long(count);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_graphics_exposure_event_t)
+{
+    property_long(drawable);
+    property_long(x);
+    property_long(y);
+    property_long(width);
+    property_long(height);
+    property_long(minor_opcode);
+    property_long(count);
+    property_long(major_opcode);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_no_exposure_event_t)
+{
+    property_long(drawable);
+    property_long(minor_opcode);
+    property_long(major_opcode);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_visibility_notify_event_t)
+{
+    property_long(window);
+    property_long(state);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_create_notify_event_t)
+{
+    property_long(parent);
+    property_long(window);
+    property_long(x);
+    property_long(y);
+    property_long(width);
+    property_long(height);
+    property_long(border_width);
+    property_long(override_redirect);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_destroy_notify_event_t)
+{
+    property_long(event);
+    property_long(window);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_unmap_notify_event_t)
+{
+    property_long(event);
+    property_long(window);
+    property_long(from_configure);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_map_notify_event_t)
+{
+    property_long(event);
+    property_long(window);
+    property_long(override_redirect);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_map_request_event_t)
+{
+    property_long(parent);
+    property_long(window);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_reparent_notify_event_t)
+{
+    property_long(event);
+    property_long(window);
+    property_long(parent);
+    property_long(x);
+    property_long(y);
+    property_long(override_redirect);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_configure_notify_event_t)
+{
+    property_long(event);
+    property_long(window);
+    property_long(above_sibling);
+    property_long(x);
+    property_long(y);
+    property_long(width);
+    property_long(height);
+    property_long(border_width);
+    property_long(override_redirect);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_gravity_notify_event_t)
+{
+    property_long(event);
+    property_long(window);
+    property_long(x);
+    property_long(y);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_resize_request_event_t)
+{
+    property_long(window);
+    property_long(width);
+    property_long(height);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_configure_request_event_t)
+{
+    property_long(stack_mode);
+    property_long(parent);
+    property_long(window);
+    property_long(sibling);
+    property_long(x);
+    property_long(y);
+    property_long(width);
+    property_long(height);
+    property_long(border_width);
+    property_long(value_mask);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_circulate_notify_event_t)
+{
+    property_long(event);
+    property_long(window);
+    property_long(place);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_circulate_request_event_t)
+{
+    property_long(event);
+    property_long(window);
+    property_long(place);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_property_notify_event_t)
+{
+    property_long(window);
+    property_long(atom);
+    property_long(time);
+    property_long(state);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_selection_clear_event_t)
+{
+    property_long(time);
+    property_long(owner);
+    property_long(selection);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_selection_request_event_t)
+{
+    property_long(time);
+    property_long(owner);
+    property_long(requestor);
+    property_long(selection);
+    property_long(target);
+    property_long(property);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_selection_notify_event_t)
+{
+    property_long(time);
+    property_long(requestor);
+    property_long(selection);
+    property_long(target);
+    property_long(property);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_colormap_notify_event_t)
+{
+    property_long(window);
+    property_long(colormap);
+    property_long(_new);
+    property_long(state);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_mapping_notify_event_t)
+{
+    property_long(request);
+    property_long(first_keycode);
+    property_long(count);
+    EVENT_END
+}
+
+EVENT_TO_OBJECT(xcb_client_message_event_t)
+{
+    int i;
+    zval *data;
+
+    property_long(format);
+    property_long(window);
+    property_long(type);
+
+    ALLOC_INIT_ZVAL(data);
+    array_init(data);
+
+    switch (src->format) {
+        case 8:
+            for (i = 0; i < 20; i++) {
+                add_next_index_long(data, src->data.data8[i]);
+            }
+            break;
+        case 16:
+            for (i = 0; i < 10; i++) {
+                add_next_index_long(data, src->data.data16[i]);
+            }
+            break;
+        case 32:
+            for (i = 0; i < 5; i++) {
+                add_next_index_long(data, src->data.data32[i]);
+            }
+            break;
+    }
+
+    add_property_zval(dest, "data", data);
+    EVENT_END
 }
 
 ZEND_MINIT_FUNCTION(xcb)
@@ -166,7 +574,6 @@ ZEND_FUNCTION(xcb_generate_id)
 {
     if (c == NULL) {
         RETURN_BOOL(0);
-        return;
     }
 
     RETURN_LONG(xcb_generate_id(c));
@@ -256,4 +663,147 @@ ZEND_FUNCTION(xcb_screen_next)
     add_property_zval(obj, "data", data);
     add_property_long(obj, "rem", it->rem);
     add_property_long(obj, "index", it->index);
+}
+
+ZEND_FUNCTION(xcb_wait_for_event)
+{
+    int fd;
+    fd_set rfds;
+    long timeout = 0;
+    struct timeval tv = {0, 0};
+    xcb_generic_event_t *e;
+
+    if (c == NULL || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l",
+                              &timeout) == FAILURE) {
+        RETURN_BOOL(0);
+    }
+
+    if (timeout > 0) {
+        fd = xcb_get_file_descriptor(c);
+        FD_ZERO(&rfds);
+        FD_SET(fd, &rfds);
+
+        tv.tv_sec = timeout;
+        select(fd + 1, &rfds, NULL, NULL, &tv);
+
+        if (!(e = xcb_poll_for_queued_event(c))) {
+            RETURN_BOOL(0);
+        }
+    }
+    else {
+        if (!(e = xcb_wait_for_event(c))) {
+            zend_error(E_WARNING, "Cannot read event: broken pipe");
+        }
+    }
+
+    object_init(return_value);
+
+    switch(e->response_type) {
+        case XCB_KEY_PRESS:
+            xcb_key_press_event_t_to_object(e, return_value);
+            break;
+        case XCB_KEY_RELEASE:
+            xcb_key_release_event_t_to_object(e, return_value);
+            break;
+        case XCB_BUTTON_PRESS:
+            xcb_button_press_event_t_to_object(e, return_value);
+            break;
+        case XCB_BUTTON_RELEASE:
+            xcb_button_release_event_t_to_object(e, return_value);
+            break;
+        case XCB_MOTION_NOTIFY:
+            xcb_motion_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_ENTER_NOTIFY:
+            xcb_enter_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_LEAVE_NOTIFY:
+            xcb_leave_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_FOCUS_IN:
+            xcb_focus_in_event_t_to_object(e, return_value);
+            break;
+        case XCB_FOCUS_OUT:
+            xcb_focus_out_event_t_to_object(e, return_value);
+            break;
+        case XCB_KEYMAP_NOTIFY:
+            xcb_keymap_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_EXPOSE:
+            xcb_expose_event_t_to_object(e, return_value);
+            break;
+        case XCB_GRAPHICS_EXPOSURE:
+            xcb_graphics_exposure_event_t_to_object(e, return_value);
+            break;
+        case XCB_NO_EXPOSURE:
+            xcb_no_exposure_event_t_to_object(e, return_value);
+            break;
+        case XCB_VISIBILITY_NOTIFY:
+            xcb_visibility_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_CREATE_NOTIFY:
+            xcb_create_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_DESTROY_NOTIFY:
+            xcb_destroy_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_UNMAP_NOTIFY:
+            xcb_unmap_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_MAP_NOTIFY:
+            xcb_map_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_MAP_REQUEST:
+            xcb_map_request_event_t_to_object(e, return_value);
+            break;
+        case XCB_REPARENT_NOTIFY:
+            xcb_reparent_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_CONFIGURE_NOTIFY:
+            xcb_configure_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_GRAVITY_NOTIFY:
+            xcb_gravity_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_RESIZE_REQUEST:
+            xcb_resize_request_event_t_to_object(e, return_value);
+            break;
+        case XCB_CONFIGURE_REQUEST:
+            xcb_configure_request_event_t_to_object(e, return_value);
+            break;
+        case XCB_CIRCULATE_NOTIFY:
+            xcb_circulate_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_CIRCULATE_REQUEST:
+            xcb_circulate_request_event_t_to_object(e, return_value);
+            break;
+        case XCB_PROPERTY_NOTIFY:
+            xcb_property_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_SELECTION_CLEAR:
+            xcb_selection_clear_event_t_to_object(e, return_value);
+            break;
+        case XCB_SELECTION_REQUEST:
+            xcb_selection_request_event_t_to_object(e, return_value);
+            break;
+        case XCB_SELECTION_NOTIFY:
+            xcb_selection_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_COLORMAP_NOTIFY:
+            xcb_colormap_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_MAPPING_NOTIFY:
+            xcb_mapping_notify_event_t_to_object(e, return_value);
+            break;
+        case XCB_CLIENT_MESSAGE:
+            xcb_client_message_event_t_to_object(e, return_value);
+            break;
+        case XCB_NONE:
+            xcb_generic_error_t_to_object(e, return_value);
+            break;
+        default:
+            xcb_generic_event_t_to_object(e, return_value);
+    }
+
+    free(e);
 }
