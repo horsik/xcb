@@ -7,7 +7,6 @@
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
-#include <X11/keysym.h>
 #include <sys/time.h>
 #include "php.h"
 
@@ -19,11 +18,6 @@
 
 #define property_long(name) add_property_long(dest, #name, (long) src->name)
 #define property_bool(name) add_property_bool(dest, #name, src->name)
-#define property_string(name) add_property_string(dest, #name, src->name)
-
-#define assoc_long(name) add_assoc_long(dest, #name, (long) src->name)
-#define assoc_bool(name) add_assoc_bool(dest, #name, src->name)
-#define assoc_string(name) add_assoc_string(dest, #name, src->name)
 
 #define STRUCT_TO_OBJECT(type) void type##_to_object(type *src, zval *dest)
 
@@ -50,5 +44,9 @@ ZEND_FUNCTION(xcb_setup_roots_length);
 ZEND_FUNCTION(xcb_setup_roots_iterator);
 ZEND_FUNCTION(xcb_screen_next);
 ZEND_FUNCTION(xcb_wait_for_event);
+ZEND_FUNCTION(xcb_change_window_attributes);
+ZEND_FUNCTION(xcb_key_symbols_alloc);
+ZEND_FUNCTION(xcb_key_symbols_get_keysym);
+ZEND_FUNCTION(xcb_key_symbols_get_keycode);
 
 #endif

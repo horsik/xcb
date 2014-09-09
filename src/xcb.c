@@ -17,6 +17,7 @@
 */
 
 #include "php_xcb.h"
+#include "const.c"
 
 zend_class_entry *xcb_iterator_ce;
 
@@ -44,6 +45,10 @@ zend_function_entry xcb_functions[] = {
     ZEND_FE(xcb_setup_roots_iterator, NULL)
     ZEND_FE(xcb_screen_next, arginfo_xcb_screen_next)
     ZEND_FE(xcb_wait_for_event, NULL)
+    ZEND_FE(xcb_change_window_attributes, NULL)
+    ZEND_FE(xcb_key_symbols_alloc, NULL)
+    ZEND_FE(xcb_key_symbols_get_keycode, NULL)
+    ZEND_FE(xcb_key_symbols_get_keysym, NULL)
     ZEND_FE_END
 };
 
@@ -64,13 +69,29 @@ zend_module_entry xcb_module_entry = {
 ZEND_GET_MODULE(xcb)
 #endif
 
-xcb_connection_t *c = NULL;
+static xcb_connection_t *c = NULL;
 static int le_xcb_setup;
 static int le_xcb_screen_iterator;
+static int le_xcb_key_symbols;
 
 void xcb_generic_dtor(zend_rsrc_list_entry *rsrc TSRMLS_CC)
 {
     free(rsrc->ptr);
+}
+
+void xcb_key_symbols_dtor(zend_rsrc_list_entry *rsrc TSRMLS_CC)
+{
+    xcb_key_symbols_free(rsrc->ptr);
+}
+
+static int check_connection()
+{
+    if (c == NULL) {
+        zend_error(E_WARNING, "Not connected to the X server");
+        return 0;
+    }
+
+    return 1;
 }
 
 STRUCT_TO_OBJECT(xcb_screen_t)
@@ -511,6 +532,9 @@ ZEND_MINIT_FUNCTION(xcb)
 
     zend_register_list_destructors(xcb_setup, NULL);
     zend_register_list_destructors(xcb_screen_iterator, xcb_generic_dtor);
+    zend_register_list_destructors(xcb_key_symbols, xcb_key_symbols_dtor);
+
+    import_constants(module_number);
 
     return SUCCESS;
 }
@@ -554,8 +578,8 @@ ZEND_FUNCTION(xcb_disconnect)
 
 ZEND_FUNCTION(xcb_connection_has_error)
 {
-    if (c == NULL) {
-        RETURN_BOOL(0);
+    if (!check_connection()) {
+        return;
     }
 
     RETURN_LONG(xcb_connection_has_error(c));
@@ -563,8 +587,8 @@ ZEND_FUNCTION(xcb_connection_has_error)
 
 ZEND_FUNCTION(xcb_flush)
 {
-    if (c == NULL) {
-        RETURN_BOOL(0);
+    if (!check_connection()) {
+        return;
     }
 
     RETURN_LONG(xcb_flush(c));
@@ -572,8 +596,8 @@ ZEND_FUNCTION(xcb_flush)
 
 ZEND_FUNCTION(xcb_generate_id)
 {
-    if (c == NULL) {
-        RETURN_BOOL(0);
+    if (!check_connection()) {
+        return;
     }
 
     RETURN_LONG(xcb_generate_id(c));
@@ -581,8 +605,8 @@ ZEND_FUNCTION(xcb_generate_id)
 
 ZEND_FUNCTION(xcb_get_setup)
 {
-    if (c == NULL) {
-        RETURN_BOOL(0);
+    if (!check_connection()) {
+        return;
     }
 
     const xcb_setup_t *setup = xcb_get_setup(c);
@@ -673,9 +697,9 @@ ZEND_FUNCTION(xcb_wait_for_event)
     struct timeval tv = {0, 0};
     xcb_generic_event_t *e;
 
-    if (c == NULL || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l",
-                              &timeout) == FAILURE) {
-        RETURN_BOOL(0);
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "|l", &timeout) == FAILURE) {
+        return;
     }
 
     if (timeout > 0) {
@@ -806,4 +830,94 @@ ZEND_FUNCTION(xcb_wait_for_event)
     }
 
     free(e);
+}
+
+ZEND_FUNCTION(xcb_change_window_attributes)
+{
+    long window, value_mask;
+    zval *values;
+    int i;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "lla", &window, &value_mask, &values) == FAILURE) {
+        return;
+    }
+
+    int n = zend_hash_num_elements(HASH_OF(values));
+    uint32_t value_list[n];
+
+    zend_hash_internal_pointer_reset(HASH_OF(values));
+
+    for (i = 0; ; zend_hash_move_forward(HASH_OF(values)), i++) {
+        zval **item;
+
+        if (zend_hash_get_current_data(HASH_OF(values),
+                                       (void **) &item) == FAILURE) {
+            break;
+        }
+
+        if (Z_TYPE_PP(item) != IS_LONG) {
+            php_error(E_ERROR, "Non-numeric value passed in value_list");
+        }
+
+        value_list[i] = Z_LVAL_PP(item);
+    }
+
+    xcb_change_window_attributes(c, window, value_mask, value_list);
+}
+
+ZEND_FUNCTION(xcb_grab_key)
+{
+    long owner_events, grab_window, modifiers, key, pointer_mode, keyboard_mode;
+
+    if (!check_connection || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "llllll", &owner_events, &grab_window, &modifiers, &key,
+            &pointer_mode, &keyboard_mode) == FAILURE) {
+        return;
+    }
+
+    xcb_grab_key(c, owner_events, grab_window, modifiers, key, pointer_mode,
+                 keyboard_mode);
+}
+
+ZEND_FUNCTION(xcb_key_symbols_alloc)
+{
+    xcb_key_symbols_t *syms = xcb_key_symbols_alloc(c);
+    ZEND_REGISTER_RESOURCE(return_value, syms, le_xcb_key_symbols);
+}
+
+ZEND_FUNCTION(xcb_key_symbols_get_keycode)
+{
+    zval *syms_resource;
+    xcb_key_symbols_t *syms;
+    long keysym;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl",
+                              &syms_resource, &keysym) == FAILURE) {
+        return;
+    }
+
+    ZEND_FETCH_RESOURCE(syms, xcb_key_symbols_t*, &syms_resource, -1,
+        "xcb_key_symbols_t", le_xcb_key_symbols);
+
+    xcb_keycode_t *key = xcb_key_symbols_get_keycode(syms, keysym);
+    RETVAL_LONG(*key);
+    free(key);
+}
+
+ZEND_FUNCTION(xcb_key_symbols_get_keysym)
+{
+    zval *syms_resource;
+    xcb_key_symbols_t *syms;
+    long keycode, col;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rll",
+                              &syms_resource, &keycode, &col) == FAILURE) {
+        return;
+    }
+
+    ZEND_FETCH_RESOURCE(syms, xcb_key_symbols_t*, &syms_resource, -1,
+        "xcb_key_symbols_t", le_xcb_key_symbols);
+
+    RETURN_LONG(xcb_key_symbols_get_keysym(syms, keycode, col));
 }
