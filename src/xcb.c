@@ -34,6 +34,10 @@ ZEND_BEGIN_ARG_INFO(arginfo_xcb_screen_next, 1)
     ZEND_ARG_OBJ_INFO(1, iterator, XcbIterator, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO(arginfo_xcb_xinerama_screen_info_next, 1)
+    ZEND_ARG_OBJ_INFO(1, iterator, XcbIterator, 0)
+ZEND_END_ARG_INFO()
+
 zend_function_entry xcb_functions[] = {
     ZEND_FE(xcb_connect, arginfo_xcb_connect)
     ZEND_FE(xcb_disconnect, NULL)
@@ -51,6 +55,14 @@ zend_function_entry xcb_functions[] = {
     ZEND_FE(xcb_key_symbols_get_keysym, NULL)
     ZEND_FE(xcb_query_extension, NULL)
     ZEND_FE(xcb_list_extensions, NULL)
+    ZEND_FE(xcb_xinerama_is_active, NULL)
+    ZEND_FE(xcb_xinerama_query_screens, NULL)
+    ZEND_FE(xcb_xinerama_query_screens_screen_info_length, NULL)
+    ZEND_FE(xcb_xinerama_query_screens_screen_info_iterator, NULL)
+    ZEND_FE(xcb_xinerama_screen_info_next, arginfo_xcb_xinerama_screen_info_next)
+    ZEND_FE(xcb_xinerama_get_screen_count, NULL)
+    ZEND_FE(xcb_xinerama_get_screen_size, NULL)
+    ZEND_FE(xcb_xinerama_get_state, NULL)
     ZEND_FE_END
 };
 
@@ -75,6 +87,8 @@ static xcb_connection_t *c = NULL;
 static int le_xcb_setup;
 static int le_xcb_screen_iterator;
 static int le_xcb_key_symbols;
+static int le_xcb_xinerama_query_screens_reply;
+static int le_xcb_xinerama_screen_info_iterator;
 
 void xcb_generic_dtor(zend_rsrc_list_entry *rsrc TSRMLS_CC)
 {
@@ -121,6 +135,34 @@ STRUCT_TO_OBJECT(xcb_generic_event_t)
     property_long(response_type);
     property_long(sequence);
     property_long(full_sequence);
+}
+
+STRUCT_TO_OBJECT(xcb_xinerama_screen_info_t)
+{
+    property_long(x_org);
+    property_long(y_org);
+    property_long(width);
+    property_long(height);
+}
+
+STRUCT_TO_OBJECT(xcb_xinerama_get_screen_count_reply_t)
+{
+    property_long(screen_count);
+    property_long(window);
+}
+
+STRUCT_TO_OBJECT(xcb_xinerama_get_screen_size_reply_t)
+{
+    property_long(width);
+    property_long(height);
+    property_long(window);
+    property_long(screen);
+}
+
+STRUCT_TO_OBJECT(xcb_xinerama_get_state_reply_t)
+{
+    property_long(state);
+    property_long(window);
 }
 
 EVENT_TO_OBJECT(xcb_generic_error_t)
@@ -535,6 +577,10 @@ ZEND_MINIT_FUNCTION(xcb)
     zend_register_list_destructors(xcb_setup, NULL);
     zend_register_list_destructors(xcb_screen_iterator, xcb_generic_dtor);
     zend_register_list_destructors(xcb_key_symbols, xcb_key_symbols_dtor);
+    zend_register_list_destructors(xcb_xinerama_query_screens_reply,
+                                   xcb_generic_dtor);
+    zend_register_list_destructors(xcb_xinerama_screen_info_iterator,
+                                   xcb_generic_dtor);
 
     import_constants(module_number);
 
@@ -974,4 +1020,187 @@ ZEND_FUNCTION(xcb_list_extensions)
     }
 
     free(reply);
+}
+
+ZEND_FUNCTION(xcb_xinerama_is_active)
+{
+    xcb_xinerama_is_active_cookie_t cookie;
+    xcb_xinerama_is_active_reply_t *reply = NULL;
+
+    if (!check_connection()) {
+        return;
+    }
+
+    cookie = xcb_xinerama_is_active(c);
+    reply = xcb_xinerama_is_active_reply(c, cookie, NULL);
+
+    if (!reply) {
+        php_error(E_WARNING, PHP_XCB_NO_XINERAMA);
+        return;
+    }
+
+    RETURN_BOOL(reply->state);
+}
+
+ZEND_FUNCTION(xcb_xinerama_query_screens)
+{
+    xcb_xinerama_query_screens_cookie_t cookie;
+    xcb_xinerama_query_screens_reply_t *reply = NULL;
+
+    if (!check_connection()) {
+        return;
+    }
+
+    cookie = xcb_xinerama_query_screens(c);
+    reply = xcb_xinerama_query_screens_reply(c, cookie, NULL);
+
+    if (reply) {
+        ZEND_REGISTER_RESOURCE(return_value, reply,
+                               le_xcb_xinerama_query_screens_reply);
+    }
+    else {
+        php_error(E_WARNING, PHP_XCB_NO_XINERAMA);
+    }
+}
+
+ZEND_FUNCTION(xcb_xinerama_query_screens_screen_info_length)
+{
+    zval *reply_rsrc;
+    xcb_xinerama_query_screens_reply_t *reply;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r",
+                              &reply_rsrc) == FAILURE) {
+        return;
+    }
+
+    ZEND_FETCH_RESOURCE(reply, xcb_xinerama_query_screens_reply_t*,
+                        &reply_rsrc, -1, "xcb_xinerama_query_screens_reply_t",
+                        le_xcb_xinerama_query_screens_reply);
+
+    RETURN_LONG(xcb_xinerama_query_screens_screen_info_length(reply));
+}
+
+ZEND_FUNCTION(xcb_xinerama_query_screens_screen_info_iterator)
+{
+    zval *reply_rsrc, *it_rsrc, *data;
+    xcb_xinerama_query_screens_reply_t *reply;
+    xcb_xinerama_screen_info_iterator_t *it;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r",
+                              &reply_rsrc) == FAILURE) {
+        return;
+    }
+
+    ZEND_FETCH_RESOURCE(reply, xcb_xinerama_query_screens_reply_t*,
+                        &reply_rsrc, -1, "xcb_xinerama_query_screens_reply_t",
+                        le_xcb_xinerama_query_screens_reply);
+
+    ALLOC_INIT_ZVAL(it_rsrc);
+    ALLOC_INIT_ZVAL(data);
+
+    object_init_ex(return_value, xcb_iterator_ce);
+    object_init(data);
+
+    it = malloc(sizeof(xcb_xinerama_screen_info_iterator_t));
+    *it = xcb_xinerama_query_screens_screen_info_iterator(reply);
+
+    xcb_xinerama_screen_info_t_to_object(it->data, data);
+    ZEND_REGISTER_RESOURCE(it_rsrc, it, le_xcb_xinerama_screen_info_iterator);
+
+    zend_update_property(xcb_iterator_ce, return_value, "iterator",
+                         strlen("iterator"), it_rsrc TSRMLS_CC);
+    add_property_zval(return_value, "data", data);
+    add_property_long(return_value, "rem", it->rem);
+    add_property_long(return_value, "index", it->index);
+}
+
+ZEND_FUNCTION(xcb_xinerama_screen_info_next)
+{
+    zval *obj, *rsrc, *data;
+    xcb_xinerama_screen_info_iterator_t *it;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+                              "o", &obj) == FAILURE) {
+        return;
+    }
+
+    rsrc = zend_read_property(xcb_iterator_ce, obj, "iterator",
+                            strlen("iterator"), 0 TSRMLS_CC);
+
+    ZEND_FETCH_RESOURCE(it, xcb_xinerama_screen_info_iterator_t*, &rsrc, -1,
+                        "xcb_xinerama_screen_info_iterator_t",
+                        le_xcb_xinerama_screen_info_iterator);
+
+    ALLOC_INIT_ZVAL(data);
+    object_init(data);
+
+    xcb_xinerama_screen_info_next(it);
+    xcb_xinerama_screen_info_t_to_object(it->data, data);
+
+    add_property_zval(obj, "data", data);
+    add_property_long(obj, "rem", it->rem);
+    add_property_long(obj, "index", it->index);
+}
+
+ZEND_FUNCTION(xcb_xinerama_get_screen_count)
+{
+    long window;
+    xcb_xinerama_get_screen_count_cookie_t cookie;
+    xcb_xinerama_get_screen_count_reply_t *reply = NULL;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "l", &window) == FAILURE) {
+        return;
+    }
+
+    cookie = xcb_xinerama_get_screen_count(c, window);
+    reply = xcb_xinerama_get_screen_count_reply(c, cookie, NULL);
+
+    if (reply) {
+        object_init(return_value);
+        xcb_xinerama_get_screen_count_reply_t_to_object(reply, return_value);
+        free(reply);
+    }
+}
+
+ZEND_FUNCTION(xcb_xinerama_get_screen_size)
+{
+    long window, screen;
+    xcb_xinerama_get_screen_size_cookie_t cookie;
+    xcb_xinerama_get_screen_size_reply_t *reply = NULL;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "ll", &window, &screen) == FAILURE) {
+        return;
+    }
+
+    cookie = xcb_xinerama_get_screen_size(c, window, screen);
+    reply = xcb_xinerama_get_screen_size_reply(c, cookie, NULL);
+
+    if (reply) {
+        object_init(return_value);
+        xcb_xinerama_get_screen_size_reply_t_to_object(reply, return_value);
+        free(reply);
+    }
+}
+
+ZEND_FUNCTION(xcb_xinerama_get_state)
+{
+    long window;
+    xcb_xinerama_get_state_cookie_t cookie;
+    xcb_xinerama_get_state_reply_t *reply = NULL;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "l", &window) == FAILURE) {
+        return;
+    }
+
+    cookie = xcb_xinerama_get_state(c, window);
+    reply = xcb_xinerama_get_state_reply(c, cookie, NULL);
+
+    if (reply) {
+        object_init(return_value);
+        xcb_xinerama_get_state_reply_t_to_object(reply, return_value);
+        free(reply);
+    }
 }

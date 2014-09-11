@@ -8,10 +8,13 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
 #include <sys/time.h>
-#include "php.h"
+#include <xcb/xinerama.h>
+#include <php5/main/php.h>
+#include <php5/Zend/zend_API.h>
 
 #define PHP_XCB_MODULE_NAME "XCB"
 #define PHP_XCB_VERSION "1.0"
+#define PHP_XCB_NO_XINERAMA "Xinerama extension not present"
 
 #define zend_register_list_destructors(s, dtor) \
     le_##s = zend_register_list_destructors_ex(dtor, NULL, #s, module_number)
@@ -50,5 +53,13 @@ ZEND_FUNCTION(xcb_key_symbols_get_keysym);
 ZEND_FUNCTION(xcb_key_symbols_get_keycode);
 ZEND_FUNCTION(xcb_query_extension);
 ZEND_FUNCTION(xcb_list_extensions);
+ZEND_FUNCTION(xcb_xinerama_is_active);
+ZEND_FUNCTION(xcb_xinerama_query_screens);
+ZEND_FUNCTION(xcb_xinerama_query_screens_screen_info_length);
+ZEND_FUNCTION(xcb_xinerama_query_screens_screen_info_iterator);
+ZEND_FUNCTION(xcb_xinerama_screen_info_next);
+ZEND_FUNCTION(xcb_xinerama_get_screen_count);
+ZEND_FUNCTION(xcb_xinerama_get_screen_size);
+ZEND_FUNCTION(xcb_xinerama_get_state);
 
 #endif
