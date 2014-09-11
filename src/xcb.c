@@ -49,6 +49,8 @@ zend_function_entry xcb_functions[] = {
     ZEND_FE(xcb_key_symbols_alloc, NULL)
     ZEND_FE(xcb_key_symbols_get_keycode, NULL)
     ZEND_FE(xcb_key_symbols_get_keysym, NULL)
+    ZEND_FE(xcb_query_extension, NULL)
+    ZEND_FE(xcb_list_extensions, NULL)
     ZEND_FE_END
 };
 
@@ -920,4 +922,56 @@ ZEND_FUNCTION(xcb_key_symbols_get_keysym)
         "xcb_key_symbols_t", le_xcb_key_symbols);
 
     RETURN_LONG(xcb_key_symbols_get_keysym(syms, keycode, col));
+}
+
+ZEND_FUNCTION(xcb_query_extension)
+{
+    char *name;
+    long name_len;
+    xcb_query_extension_cookie_t cookie;
+    xcb_query_extension_reply_t *reply = NULL;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "s", &name, &name_len) == FAILURE) {
+        return;
+    }
+
+    cookie = xcb_query_extension(c, name_len, name);
+    reply = xcb_query_extension_reply(c, cookie, NULL);
+
+    object_init(return_value);
+
+    add_property_bool(return_value, "present", reply->present);
+    add_property_long(return_value, "major_opcode", reply->major_opcode);
+    add_property_long(return_value, "first_event", reply->first_event);
+    add_property_long(return_value, "first_error", reply->first_error);
+
+    free(reply);
+}
+
+ZEND_FUNCTION(xcb_list_extensions)
+{
+    xcb_list_extensions_cookie_t cookie;
+    xcb_list_extensions_reply_t *reply;
+    xcb_str_iterator_t it;
+
+    if (!check_connection()) {
+        return;
+    }
+
+    cookie = xcb_list_extensions(c);
+    reply = xcb_list_extensions_reply(c, cookie, NULL);
+    it = xcb_list_extensions_names_iterator(reply);
+
+    array_init(return_value);
+
+    for (; it.rem > 0; xcb_str_next(&it))
+    {
+        char name[it.data->name_len];
+        memcpy(name, xcb_str_name(it.data), it.data->name_len);
+        name[it.data->name_len] = '\0';
+        add_next_index_string(return_value, name, 1);
+    }
+
+    free(reply);
 }

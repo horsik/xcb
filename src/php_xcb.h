@@ -48,5 +48,7 @@ ZEND_FUNCTION(xcb_change_window_attributes);
 ZEND_FUNCTION(xcb_key_symbols_alloc);
 ZEND_FUNCTION(xcb_key_symbols_get_keysym);
 ZEND_FUNCTION(xcb_key_symbols_get_keycode);
+ZEND_FUNCTION(xcb_query_extension);
+ZEND_FUNCTION(xcb_list_extensions);
 
 #endif
