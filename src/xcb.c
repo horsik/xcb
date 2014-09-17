@@ -63,6 +63,17 @@ zend_function_entry xcb_functions[] = {
     ZEND_FE(xcb_xinerama_get_screen_count, NULL)
     ZEND_FE(xcb_xinerama_get_screen_size, NULL)
     ZEND_FE(xcb_xinerama_get_state, NULL)
+    ZEND_FE(xcb_map_window, NULL)
+    ZEND_FE(xcb_map_subwindows, NULL)
+    ZEND_FE(xcb_unmap_window, NULL)
+    ZEND_FE(xcb_configure_window, NULL)
+    ZEND_FE(xcb_set_input_focus, NULL)
+    ZEND_FE(xcb_create_window, NULL)
+    ZEND_FE(xcb_reparent_window, NULL)
+    ZEND_FE(xcb_destroy_window, NULL)
+    ZEND_FE(xcb_intern_atom, NULL)
+    ZEND_FE(xcb_change_property, NULL)
+    ZEND_FE(xcb_get_geometry, NULL)
     ZEND_FE_END
 };
 
@@ -110,6 +121,28 @@ static int check_connection()
     return 1;
 }
 
+void php_array_to_long_array(zval *src, uint32_t *dest)
+{
+    int i;
+
+    zend_hash_internal_pointer_reset(HASH_OF(src));
+
+    for (i = 0; ; zend_hash_move_forward(HASH_OF(src)), i++) {
+        zval **item;
+
+        if (zend_hash_get_current_data(HASH_OF(src),
+                                       (void **) &item) == FAILURE) {
+            break;
+        }
+
+        if (Z_TYPE_PP(item) != IS_LONG) {
+            php_error(E_ERROR, "Non-numeric value passed in value_list");
+        }
+
+        dest[i] = Z_LVAL_PP(item);
+    }
+}
+
 STRUCT_TO_OBJECT(xcb_screen_t)
 {
     property_long(root);
@@ -117,8 +150,8 @@ STRUCT_TO_OBJECT(xcb_screen_t)
     property_long(white_pixel);
     property_long(black_pixel);
     property_long(current_input_masks);
-    property_long(width_in_pixels);
-    property_long(height_in_pixels);
+    rename_property_long(width_in_pixels, width);
+    rename_property_long(height_in_pixels, height);
     property_long(width_in_millimeters);
     property_long(height_in_millimeters);
     property_long(min_installed_maps);
@@ -139,8 +172,8 @@ STRUCT_TO_OBJECT(xcb_generic_event_t)
 
 STRUCT_TO_OBJECT(xcb_xinerama_screen_info_t)
 {
-    property_long(x_org);
-    property_long(y_org);
+    rename_property_long(x_org, x);
+    rename_property_long(y_org, y);
     property_long(width);
     property_long(height);
 }
@@ -163,6 +196,17 @@ STRUCT_TO_OBJECT(xcb_xinerama_get_state_reply_t)
 {
     property_long(state);
     property_long(window);
+}
+
+STRUCT_TO_OBJECT(xcb_get_geometry_reply_t)
+{
+    property_long(depth);
+    property_long(root);
+    property_long(x);
+    property_long(y);
+    property_long(width);
+    property_long(height);
+    property_long(border_width);
 }
 
 EVENT_TO_OBJECT(xcb_generic_error_t)
@@ -882,36 +926,22 @@ ZEND_FUNCTION(xcb_wait_for_event)
 
 ZEND_FUNCTION(xcb_change_window_attributes)
 {
-    long window, value_mask;
+    long window, value_mask, n;
     zval *values;
-    int i;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "lla", &window, &value_mask, &values) == FAILURE) {
         return;
     }
 
-    int n = zend_hash_num_elements(HASH_OF(values));
-    uint32_t value_list[n];
+    n = zend_hash_num_elements(HASH_OF(values)) - 1;
 
-    zend_hash_internal_pointer_reset(HASH_OF(values));
+    if (n >= 0) {
+        uint32_t value_list[n];
 
-    for (i = 0; ; zend_hash_move_forward(HASH_OF(values)), i++) {
-        zval **item;
-
-        if (zend_hash_get_current_data(HASH_OF(values),
-                                       (void **) &item) == FAILURE) {
-            break;
-        }
-
-        if (Z_TYPE_PP(item) != IS_LONG) {
-            php_error(E_ERROR, "Non-numeric value passed in value_list");
-        }
-
-        value_list[i] = Z_LVAL_PP(item);
+        php_array_to_long_array(values, value_list);
+        xcb_change_window_attributes(c, window, value_mask, value_list);
     }
-
-    xcb_change_window_attributes(c, window, value_mask, value_list);
 }
 
 ZEND_FUNCTION(xcb_grab_key)
@@ -1201,6 +1231,208 @@ ZEND_FUNCTION(xcb_xinerama_get_state)
     if (reply) {
         object_init(return_value);
         xcb_xinerama_get_state_reply_t_to_object(reply, return_value);
+        free(reply);
+    }
+}
+
+ZEND_FUNCTION(xcb_map_window)
+{
+    long window;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "l", &window) == FAILURE) {
+        return;
+    }
+
+    xcb_map_window(c, window);
+}
+
+ZEND_FUNCTION(xcb_map_subwindows)
+{
+    long window;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "l", &window) == FAILURE) {
+        return;
+    }
+
+    xcb_map_subwindows(c, window);
+}
+
+ZEND_FUNCTION(xcb_unmap_window)
+{
+    long window;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "l", &window) == FAILURE) {
+        return;
+    }
+
+    xcb_unmap_window(c, window);
+}
+
+ZEND_FUNCTION(xcb_configure_window)
+{
+    long window, value_mask, n;
+    zval *values;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "lla", &window, &value_mask, &values) == FAILURE) {
+        return;
+    }
+
+    n = zend_hash_num_elements(HASH_OF(values)) - 1;
+
+    if (n >= 0) {
+        uint32_t value_list[n];
+
+        php_array_to_long_array(values, value_list);
+        xcb_configure_window(c, window, value_mask, value_list);
+    }
+}
+
+ZEND_FUNCTION(xcb_set_input_focus)
+{
+    long revert_to, window, time;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "lll", &revert_to, &window, &time) == FAILURE) {
+        return;
+    }
+
+    xcb_set_input_focus(c, revert_to, window, time);
+}
+
+ZEND_FUNCTION(xcb_create_window)
+{
+    long depth, wid, parent, x, y, width, height, border_width, _class,
+         visual, value_mask, n;
+    zval *values;
+    uint32_t *value_list = NULL;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "llllllllllla", &depth, &wid, &parent, &x, &y, &width, &height,
+            &border_width, &_class, &visual, &value_mask, &values) == FAILURE) {
+        return;
+    }
+
+    n = zend_hash_num_elements(HASH_OF(values)) - 1;
+
+    if (n >= 0) {
+        value_list = (int *)malloc(sizeof(int) * n);
+        php_array_to_long_array(values, value_list);
+    }
+
+    xcb_create_window(c, depth, wid, parent, x, y, width, height,
+                      border_width, _class, visual, value_mask, value_list);
+
+    free(value_list);
+}
+
+ZEND_FUNCTION(xcb_reparent_window)
+{
+    long window, parent, x, y;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "llll", &window, &parent, &x, &y) == FAILURE) {
+        return;
+    }
+
+    xcb_reparent_window(c, window, parent, x, y);
+}
+
+ZEND_FUNCTION(xcb_destroy_window)
+{
+    long window;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "l", &window) == FAILURE) {
+        return;
+    }
+
+    xcb_destroy_window(c, window);
+}
+
+ZEND_FUNCTION(xcb_intern_atom)
+{
+    long only_if_exists, name_len;
+    char *name;
+    xcb_intern_atom_cookie_t cookie;
+    xcb_intern_atom_reply_t *reply = NULL;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "ls", &only_if_exists, &name, &name_len) == FAILURE) {
+        return;
+    }
+
+    cookie = xcb_intern_atom(c, only_if_exists, name_len, name);
+    reply = xcb_intern_atom_reply(c, cookie, NULL);
+
+    if (reply) {
+        RETVAL_LONG(reply->atom);
+        free(reply);
+    }
+}
+
+/*
+ * todo(horsik) rest of atom functions
+ */
+
+ZEND_FUNCTION(xcb_change_property)
+{
+    long mode, window, property, type, format, n;
+    zval *zdata;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "lllllz", &mode, &window, &property, &type, &format,
+            &zdata) == FAILURE) {
+        return;
+    }
+
+    /*
+     * todo(horsik) verify if multiple uint16 values can be passed as uint32
+     *              if so format parameter would be useless
+     */
+    if (Z_TYPE_P(zdata) == IS_STRING) {
+        char *s = Z_STRVAL_P(zdata);
+
+        xcb_change_property(c, mode, window, property, type, 8, strlen(s), s);
+    }
+    else if (Z_TYPE_P(zdata) == IS_LONG) {
+        long i = Z_LVAL_P(zdata);
+
+        xcb_change_property(c, mode, window, property, type, format, 1, &i);
+    }
+    else if (Z_TYPE_P(zdata) == IS_ARRAY) {
+        n = zend_hash_num_elements(HASH_OF(zdata)) - 1;
+
+        if (n >= 0) {
+            uint32_t value_list[n];
+
+            php_array_to_long_array(zdata, value_list);
+            xcb_change_property(c, mode, window, property, type, format, n,
+                                &value_list);
+        }
+    }
+}
+
+ZEND_FUNCTION(xcb_get_geometry)
+{
+    long drawable;
+    xcb_get_geometry_cookie_t cookie;
+    xcb_get_geometry_reply_t *reply = NULL;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "l", &drawable) == FAILURE) {
+        return;
+    }
+
+    cookie = xcb_get_geometry(c, drawable);
+    reply = xcb_get_geometry_reply(c, cookie, NULL);
+
+    if (reply) {
+        object_init(return_value);
+        xcb_get_geometry_reply_t_to_object(reply, return_value);
         free(reply);
     }
 }

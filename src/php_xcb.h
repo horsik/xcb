@@ -20,6 +20,8 @@
     le_##s = zend_register_list_destructors_ex(dtor, NULL, #s, module_number)
 
 #define property_long(name) add_property_long(dest, #name, (long) src->name)
+#define rename_property_long(oldname, newname) \
+    add_property_long(dest, #newname, (long) src->oldname)
 #define property_bool(name) add_property_bool(dest, #name, src->name)
 
 #define STRUCT_TO_OBJECT(type) void type##_to_object(type *src, zval *dest)
@@ -61,5 +63,16 @@ ZEND_FUNCTION(xcb_xinerama_screen_info_next);
 ZEND_FUNCTION(xcb_xinerama_get_screen_count);
 ZEND_FUNCTION(xcb_xinerama_get_screen_size);
 ZEND_FUNCTION(xcb_xinerama_get_state);
+ZEND_FUNCTION(xcb_map_window);
+ZEND_FUNCTION(xcb_map_subwindows);
+ZEND_FUNCTION(xcb_unmap_window);
+ZEND_FUNCTION(xcb_configure_window);
+ZEND_FUNCTION(xcb_set_input_focus);
+ZEND_FUNCTION(xcb_create_window);
+ZEND_FUNCTION(xcb_reparent_window);
+ZEND_FUNCTION(xcb_destroy_window);
+ZEND_FUNCTION(xcb_intern_atom);
+ZEND_FUNCTION(xcb_change_property);
+ZEND_FUNCTION(xcb_get_geometry);
 
 #endif
