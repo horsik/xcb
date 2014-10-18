@@ -63,6 +63,8 @@ zend_function_entry xcb_functions[] = {
     ZEND_FE(xcb_change_window_attributes, NULL)
     ZEND_FE(xcb_grab_key, NULL)
     ZEND_FE(xcb_ungrab_key, NULL)
+    ZEND_FE(xcb_grab_button, NULL)
+    ZEND_FE(xcb_ungrab_button, NULL)
     ZEND_FE(xcb_key_symbols_alloc, NULL)
     ZEND_FE(xcb_key_symbols_get_keycode, NULL)
     ZEND_FE(xcb_key_symbols_get_keysym, NULL)
@@ -80,6 +82,7 @@ zend_function_entry xcb_functions[] = {
     ZEND_FE(xcb_map_subwindows, NULL)
     ZEND_FE(xcb_unmap_window, NULL)
     ZEND_FE(xcb_configure_window, NULL)
+    ZEND_FE(xcb_get_input_focus, NULL)
     ZEND_FE(xcb_set_input_focus, NULL)
     ZEND_FE(xcb_create_window, NULL)
     ZEND_FE(xcb_reparent_window, NULL)
@@ -93,6 +96,7 @@ zend_function_entry xcb_functions[] = {
     ZEND_FE(xcb_query_tree_children, arginfo_xcb_query_tree_children)
     ZEND_FE(xcb_get_window_attributes, NULL)
     ZEND_FE(xcb_change_save_set, NULL)
+    ZEND_FE(xcb_send_event, NULL)
     ZEND_FE_END
 };
 
@@ -253,9 +257,16 @@ STRUCT_TO_ASSOC(xcb_get_window_attributes_reply_t)
     assoc_long(do_not_propagate_mask);
 }
 
+STRUCT_TO_ASSOC(xcb_get_input_focus_reply_t)
+{
+    assoc_long(revert_to);
+    assoc_long(focus);
+}
+
 EVENT_TO_ASSOC(xcb_generic_error_t)
 {
     assoc_long(error_code);
+    assoc_long(sequence);
     assoc_long(resource_id);
     assoc_long(minor_code);
     assoc_long(major_code);
@@ -992,6 +1003,7 @@ ZEND_FUNCTION(xcb_change_window_attributes)
 {
     long window, value_mask, n;
     zval *values;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "lla", &window, &value_mask, &values) == FAILURE) {
@@ -1004,13 +1016,16 @@ ZEND_FUNCTION(xcb_change_window_attributes)
         uint32_t value_list[n];
 
         php_array_to_long_array(values, value_list);
-        xcb_change_window_attributes(c, window, value_mask, value_list);
+        cookie = xcb_change_window_attributes(c, window, value_mask, value_list);
+
+        RETURN_LONG(cookie.sequence);
     }
 }
 
 ZEND_FUNCTION(xcb_grab_key)
 {
     long owner_events, grab_window, modifiers, key, pointer_mode, keyboard_mode;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "llllll", &owner_events, &grab_window, &modifiers, &key,
@@ -1018,8 +1033,10 @@ ZEND_FUNCTION(xcb_grab_key)
         return;
     }
 
-    xcb_grab_key(c, owner_events, grab_window, modifiers, key, pointer_mode,
-                 keyboard_mode);
+    cookie = xcb_grab_key(c, owner_events, grab_window, modifiers, key,
+                          pointer_mode, keyboard_mode);
+
+    RETURN_LONG(cookie.sequence);
 }
 
 ZEND_FUNCTION(xcb_ungrab_key)
@@ -1032,6 +1049,34 @@ ZEND_FUNCTION(xcb_ungrab_key)
     }
 
     xcb_ungrab_key(c, key, grab_window, modifiers);
+}
+
+ZEND_FUNCTION(xcb_grab_button)
+{
+    long owner_events, grab_window, event_mask, pointer_mode, keyboard_mode,
+         confine_to, cursor, button, modifiers;
+
+    if (!check_connection || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "lllllllll", &owner_events, &grab_window, &event_mask,
+            &pointer_mode, &keyboard_mode, &confine_to, &cursor, &button,
+            &modifiers) == FAILURE) {
+        return;
+    }
+
+    xcb_grab_button(c, owner_events, grab_window, event_mask, pointer_mode,
+                    keyboard_mode, confine_to, cursor, button, modifiers);
+}
+
+ZEND_FUNCTION(xcb_ungrab_button)
+{
+    long button, grab_window, modifiers;
+
+    if (!check_connection || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "lll", &button, &grab_window, &modifiers) == FAILURE) {
+        return;
+    }
+
+    xcb_ungrab_button(c, button, grab_window, modifiers);
 }
 
 ZEND_FUNCTION(xcb_key_symbols_alloc)
@@ -1317,43 +1362,50 @@ ZEND_FUNCTION(xcb_xinerama_get_state)
 ZEND_FUNCTION(xcb_map_window)
 {
     long window;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "l", &window) == FAILURE) {
         return;
     }
 
-    xcb_map_window(c, window);
+    cookie = xcb_map_window(c, window);
+    RETURN_LONG(cookie.sequence);
 }
 
 ZEND_FUNCTION(xcb_map_subwindows)
 {
     long window;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "l", &window) == FAILURE) {
         return;
     }
 
-    xcb_map_subwindows(c, window);
+    cookie = xcb_map_subwindows(c, window);
+    RETURN_LONG(cookie.sequence);
 }
 
 ZEND_FUNCTION(xcb_unmap_window)
 {
     long window;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "l", &window) == FAILURE) {
         return;
     }
 
-    xcb_unmap_window(c, window);
+    cookie = xcb_unmap_window(c, window);
+    RETURN_LONG(cookie.sequence);
 }
 
 ZEND_FUNCTION(xcb_configure_window)
 {
     long window, value_mask, n;
     zval *values;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "lla", &window, &value_mask, &values) == FAILURE) {
@@ -1366,20 +1418,42 @@ ZEND_FUNCTION(xcb_configure_window)
         uint32_t value_list[n];
 
         php_array_to_long_array(values, value_list);
-        xcb_configure_window(c, window, value_mask, value_list);
+        cookie = xcb_configure_window(c, window, value_mask, value_list);
+        RETURN_LONG(cookie.sequence);
+    }
+}
+
+ZEND_FUNCTION(xcb_get_input_focus)
+{
+    xcb_get_input_focus_cookie_t cookie;
+    xcb_get_input_focus_reply_t *reply = NULL;
+
+    if (!check_connection()) {
+        return;
+    }
+
+    cookie = xcb_get_input_focus(c);
+    reply = xcb_get_input_focus_reply(c, cookie, NULL);
+
+    if (reply) {
+        array_init(return_value);
+        xcb_get_input_focus_reply_t_to_assoc(reply, return_value);
+        free(reply);
     }
 }
 
 ZEND_FUNCTION(xcb_set_input_focus)
 {
     long revert_to, window, time;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "lll", &revert_to, &window, &time) == FAILURE) {
         return;
     }
 
-    xcb_set_input_focus(c, revert_to, window, time);
+    cookie = xcb_set_input_focus(c, revert_to, window, time);
+    RETURN_LONG(cookie.sequence);
 }
 
 ZEND_FUNCTION(xcb_create_window)
@@ -1388,6 +1462,7 @@ ZEND_FUNCTION(xcb_create_window)
          visual, value_mask, n;
     zval *values;
     uint32_t *value_list = NULL;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "llllllllllla", &depth, &wid, &parent, &x, &y, &width, &height,
@@ -1398,12 +1473,13 @@ ZEND_FUNCTION(xcb_create_window)
     n = zend_hash_num_elements(HASH_OF(values)) - 1;
 
     if (n >= 0) {
-        value_list = (int *)malloc(sizeof(int) * n);
+        value_list = (uint32_t *)malloc(sizeof(uint32_t) * n);
         php_array_to_long_array(values, value_list);
     }
 
-    xcb_create_window(c, depth, wid, parent, x, y, width, height,
+    cookie = xcb_create_window(c, depth, wid, parent, x, y, width, height,
                       border_width, _class, visual, value_mask, value_list);
+    RETVAL_LONG(cookie.sequence);
 
     free(value_list);
 }
@@ -1411,25 +1487,29 @@ ZEND_FUNCTION(xcb_create_window)
 ZEND_FUNCTION(xcb_reparent_window)
 {
     long window, parent, x, y;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "llll", &window, &parent, &x, &y) == FAILURE) {
         return;
     }
 
-    xcb_reparent_window(c, window, parent, x, y);
+    cookie = xcb_reparent_window(c, window, parent, x, y);
+    RETURN_LONG(cookie.sequence);
 }
 
 ZEND_FUNCTION(xcb_destroy_window)
 {
     long window;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "l", &window) == FAILURE) {
         return;
     }
 
-    xcb_destroy_window(c, window);
+    cookie = xcb_destroy_window(c, window);
+    RETURN_LONG(cookie.sequence);
 }
 
 ZEND_FUNCTION(xcb_intern_atom)
@@ -1501,6 +1581,7 @@ ZEND_FUNCTION(xcb_change_property)
 {
     long mode, window, property, type, format, n;
     zval *zdata;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "lllllz", &mode, &window, &property, &type, &format,
@@ -1511,12 +1592,15 @@ ZEND_FUNCTION(xcb_change_property)
     if (Z_TYPE_P(zdata) == IS_STRING) {
         char *s = Z_STRVAL_P(zdata);
 
-        xcb_change_property(c, mode, window, property, type, 8, strlen(s), s);
+        cookie = xcb_change_property(c, mode, window, property, type, 8,
+                                     strlen(s), s);
+        RETURN_LONG(cookie.sequence);
     }
     else if (Z_TYPE_P(zdata) == IS_LONG) {
         long i = Z_LVAL_P(zdata);
 
-        xcb_change_property(c, mode, window, property, type, format, 1, &i);
+        cookie = xcb_change_property(c, mode, window, property, type, format, 1, &i);
+        RETURN_LONG(cookie.sequence);
     }
     else if (Z_TYPE_P(zdata) == IS_ARRAY) {
         n = zend_hash_num_elements(HASH_OF(zdata)) - 1;
@@ -1526,8 +1610,9 @@ ZEND_FUNCTION(xcb_change_property)
                 uint32_t value_list[n];
 
                 php_array_to_long_array(zdata, value_list);
-                xcb_change_property(c, mode, window, property, type, format, n,
-                                    &value_list);
+                cookie = xcb_change_property(c, mode, window, property, type,
+                                             format, n, &value_list);
+                RETURN_LONG(cookie.sequence);
             }
             else {
                 /* not yet implemented */
@@ -1635,11 +1720,29 @@ ZEND_FUNCTION(xcb_get_window_attributes)
 ZEND_FUNCTION(xcb_change_save_set)
 {
     long mode, window;
+    xcb_void_cookie_t cookie;
 
     if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
             "ll", &mode, &window) == FAILURE) {
         return;
     }
 
-    xcb_change_save_set(c, mode, window);
+    cookie = xcb_change_save_set(c, mode, window);
+    RETURN_LONG(cookie.sequence);
+}
+
+ZEND_FUNCTION(xcb_send_event)
+{
+    long propagate, destination, event_mask, event_length;
+    char *event;
+    xcb_void_cookie_t cookie;
+
+    if (!check_connection() || zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
+            "llls", &propagate, &destination, &event_mask, &event,
+            &event_length) == FAILURE) {
+        return;
+    }
+
+    cookie = xcb_send_event(c, propagate, destination, event_mask, event);
+    RETURN_LONG(cookie.sequence);
 }

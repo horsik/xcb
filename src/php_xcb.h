@@ -71,6 +71,9 @@ ZEND_FUNCTION(xcb_unmap_window);
 ZEND_FUNCTION(xcb_configure_window);
 ZEND_FUNCTION(xcb_grab_key);
 ZEND_FUNCTION(xcb_ungrab_key);
+ZEND_FUNCTION(xcb_grab_button);
+ZEND_FUNCTION(xcb_ungrab_button);
+ZEND_FUNCTION(xcb_get_input_focus);
 ZEND_FUNCTION(xcb_set_input_focus);
 ZEND_FUNCTION(xcb_create_window);
 ZEND_FUNCTION(xcb_reparent_window);
@@ -84,5 +87,6 @@ ZEND_FUNCTION(xcb_query_tree);
 ZEND_FUNCTION(xcb_query_tree_children);
 ZEND_FUNCTION(xcb_get_window_attributes);
 ZEND_FUNCTION(xcb_change_save_set);
+ZEND_FUNCTION(xcb_send_event);
 
 #endif
