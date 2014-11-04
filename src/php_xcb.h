@@ -12,6 +12,10 @@
 #include <php5/main/php.h>
 #include <php5/Zend/zend_API.h>
 
+#ifdef ZTS
+#include "TSRM.h"
+#endif
+
 #define PHP_XCB_MODULE_NAME "XCB"
 #define PHP_XCB_VERSION "1.0"
 #define PHP_XCB_NO_XINERAMA "Xinerama extension not present"

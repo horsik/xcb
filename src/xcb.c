@@ -125,12 +125,12 @@ static int le_xcb_xinerama_query_screens_reply;
 static int le_xcb_xinerama_screen_info_iterator;
 static int le_xcb_query_tree_reply;
 
-void xcb_generic_dtor(zend_rsrc_list_entry *rsrc TSRMLS_CC)
+void xcb_generic_dtor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
 {
     free(rsrc->ptr);
 }
 
-void xcb_key_symbols_dtor(zend_rsrc_list_entry *rsrc TSRMLS_CC)
+void xcb_key_symbols_dtor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
 {
     xcb_key_symbols_free(rsrc->ptr);
 }
@@ -145,7 +145,7 @@ static int check_connection()
     return 1;
 }
 
-void php_array_to_long_array(zval *src, uint32_t *dest)
+void php_array_to_long_array(zval *src, uint32_t *dest TSRMLS_DC)
 {
     int i;
 
@@ -688,7 +688,7 @@ ZEND_MINIT_FUNCTION(xcb)
                                    xcb_generic_dtor);
     zend_register_list_destructors(xcb_query_tree_reply, xcb_generic_dtor);
 
-    import_constants(module_number);
+    import_constants(module_number TSRMLS_CC);
 
     return SUCCESS;
 }
@@ -1015,7 +1015,7 @@ ZEND_FUNCTION(xcb_change_window_attributes)
     if (n >= 0) {
         uint32_t value_list[n];
 
-        php_array_to_long_array(values, value_list);
+        php_array_to_long_array(values, value_list TSRMLS_CC);
         cookie = xcb_change_window_attributes(c, window, value_mask, value_list);
 
         RETURN_LONG(cookie.sequence);
@@ -1417,7 +1417,7 @@ ZEND_FUNCTION(xcb_configure_window)
     if (n >= 0) {
         uint32_t value_list[n];
 
-        php_array_to_long_array(values, value_list);
+        php_array_to_long_array(values, value_list TSRMLS_CC);
         cookie = xcb_configure_window(c, window, value_mask, value_list);
         RETURN_LONG(cookie.sequence);
     }
@@ -1474,7 +1474,7 @@ ZEND_FUNCTION(xcb_create_window)
 
     if (n >= 0) {
         value_list = (uint32_t *)malloc(sizeof(uint32_t) * n);
-        php_array_to_long_array(values, value_list);
+        php_array_to_long_array(values, value_list TSRMLS_CC);
     }
 
     cookie = xcb_create_window(c, depth, wid, parent, x, y, width, height,
@@ -1609,7 +1609,7 @@ ZEND_FUNCTION(xcb_change_property)
             if (format == 32) {
                 uint32_t value_list[n];
 
-                php_array_to_long_array(zdata, value_list);
+                php_array_to_long_array(zdata, value_list TSRMLS_CC);
                 cookie = xcb_change_property(c, mode, window, property, type,
                                              format, n, &value_list);
                 RETURN_LONG(cookie.sequence);

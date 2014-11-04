@@ -4,7 +4,7 @@
 #define REGISTER_CONSTANT(name) \
     REGISTER_LONG_CONSTANT(#name, name, CONST_CS | CONST_PERSISTENT);
 
-void import_constants(int module_number)
+void import_constants(int module_number TSRMLS_DC)
 {
     /* custom constants */
     REGISTER_LONG_CONSTANT("XCB_POSITION_MASK",
@@ -210,7 +210,6 @@ void import_constants(int module_number)
     REGISTER_CONSTANT(XCB_MAPPING_KEYBOARD)
     REGISTER_CONSTANT(XCB_MAPPING_POINTER)
     REGISTER_CONSTANT(XCB_MAPPING_NOTIFY)
-    REGISTER_CONSTANT(XCB_GE_GENERIC)
     REGISTER_CONSTANT(XCB_REQUEST)
     REGISTER_CONSTANT(XCB_VALUE)
     REGISTER_CONSTANT(XCB_WINDOW)
@@ -816,10 +815,6 @@ void import_constants(int module_number)
     REGISTER_CONSTANT(XK_dead_invertedbreve)
     REGISTER_CONSTANT(XK_dead_belowcomma)
     REGISTER_CONSTANT(XK_dead_currency)
-    REGISTER_CONSTANT(XK_dead_lowline)
-    REGISTER_CONSTANT(XK_dead_aboveverticalline)
-    REGISTER_CONSTANT(XK_dead_belowverticalline)
-    REGISTER_CONSTANT(XK_dead_longsolidusoverlay)
     REGISTER_CONSTANT(XK_dead_a)
     REGISTER_CONSTANT(XK_dead_A)
     REGISTER_CONSTANT(XK_dead_e)
@@ -832,7 +827,6 @@ void import_constants(int module_number)
     REGISTER_CONSTANT(XK_dead_U)
     REGISTER_CONSTANT(XK_dead_small_schwa)
     REGISTER_CONSTANT(XK_dead_capital_schwa)
-    REGISTER_CONSTANT(XK_dead_greek)
     REGISTER_CONSTANT(XK_First_Virtual_Screen)
     REGISTER_CONSTANT(XK_Prev_Virtual_Screen)
     REGISTER_CONSTANT(XK_Next_Virtual_Screen)
@@ -879,12 +873,6 @@ void import_constants(int module_number)
     REGISTER_CONSTANT(XK_Pointer_Accelerate)
     REGISTER_CONSTANT(XK_Pointer_DfltBtnNext)
     REGISTER_CONSTANT(XK_Pointer_DfltBtnPrev)
-    REGISTER_CONSTANT(XK_ch)
-    REGISTER_CONSTANT(XK_Ch)
-    REGISTER_CONSTANT(XK_CH)
-    REGISTER_CONSTANT(XK_c_h)
-    REGISTER_CONSTANT(XK_C_h)
-    REGISTER_CONSTANT(XK_C_H)
 #endif /* XK_XKB_KEYS */
 #ifdef XK_3270
     REGISTER_CONSTANT(XK_3270_Duplicate)
@@ -2223,8 +2211,6 @@ void import_constants(int module_number)
     REGISTER_CONSTANT(XK_obarred)                        /* U+0275 LATIN SMALL LETTER BARRED O */
     REGISTER_CONSTANT(XK_SCHWA)                          /* U+018F LATIN CAPITAL LETTER SCHWA */
     REGISTER_CONSTANT(XK_schwa)                          /* U+0259 LATIN SMALL LETTER SCHWA */
-    REGISTER_CONSTANT(XK_EZH)                            /* U+01B7 LATIN CAPITAL LETTER EZH */
-    REGISTER_CONSTANT(XK_ezh)                            /* U+0292 LATIN SMALL LETTER EZH */
     REGISTER_CONSTANT(XK_Lbelowdot)                      /* U+1E36 LATIN CAPITAL LETTER L WITH DOT BELOW */
     REGISTER_CONSTANT(XK_lbelowdot)                      /* U+1E37 LATIN SMALL LETTER L WITH DOT BELOW */
 #endif /* XK_CAUCASUS */
